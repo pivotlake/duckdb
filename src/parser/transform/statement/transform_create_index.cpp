@@ -71,9 +71,10 @@ unique_ptr<CreateStatement> Transformer::TransformCreateIndex(duckdb_libpgquery:
 				if (expr->expression_class == ExpressionClass::CAST &&
 				    expr->Cast<CastExpression>().child->expression_class == ExpressionClass::CONSTANT) {
 					// A constant written with its type, which is how `true` and
-					// `false` arrive: a cast of the text the word is kept as.
-					auto &cast = expr->Cast<CastExpression>();
-					val = cast.child->Cast<ConstantExpression>().value.DefaultCastAs(cast.cast_type);
+					// `false` arrive: a cast of the text the word is kept as. The
+					// type is still only a name here, so the option takes the
+					// text, for whoever reads the option to make sense of.
+					val = expr->Cast<CastExpression>().child->Cast<ConstantExpression>().value;
 				} else if (expr->expression_class == ExpressionClass::CONSTANT) {
 					val = expr->Cast<ConstantExpression>().value;
 				} else {
