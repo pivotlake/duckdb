@@ -1,5 +1,6 @@
 #include "duckdb/common/enum_util.hpp"
 #include "duckdb/common/string_util.hpp"
+#include "duckdb/parser/expression/cast_expression.hpp"
 #include "duckdb/parser/expression/columnref_expression.hpp"
 #include "duckdb/parser/expression/constant_expression.hpp"
 #include "duckdb/parser/parsed_data/create_index_info.hpp"
@@ -65,17 +66,19 @@ unique_ptr<CreateStatement> Transformer::TransformCreateIndex(duckdb_libpgquery:
 		for_each_cell(cell, stmt.options->head) {
 			auto def_elem = PGPointerCast<duckdb_libpgquery::PGDefElem>(cell->data.ptr_value);
 			Value val;
-			if (def_elem->arg && def_elem->arg->type == duckdb_libpgquery::T_PGString) {
-				// A bare word, as `true` and `false` are written: its text is
-				// the value, for whoever reads the option to make sense of.
-				val = Value(PGPointerCast<duckdb_libpgquery::PGValue>(def_elem->arg)->val.str);
-			} else if (def_elem->arg) {
+			if (def_elem->arg) {
 				auto expr = TransformExpression(def_elem->arg);
-				if (expr->expression_class != ExpressionClass::CONSTANT) {
+				if (expr->expression_class == ExpressionClass::CAST &&
+				    expr->Cast<CastExpression>().child->expression_class == ExpressionClass::CONSTANT) {
+					// A constant written with its type, which is how `true` and
+					// `false` arrive: a cast of the text the word is kept as.
+					auto &cast = expr->Cast<CastExpression>();
+					val = cast.child->Cast<ConstantExpression>().value.DefaultCastAs(cast.cast_type);
+				} else if (expr->expression_class == ExpressionClass::CONSTANT) {
+					val = expr->Cast<ConstantExpression>().value;
+				} else {
 					throw InvalidInputException("Create index option must be a constant value");
 				}
-				auto &const_expr = expr->Cast<ConstantExpression>();
-				val = const_expr.value;
 			} else {
 				val = Value::BOOLEAN(true);
 			}
