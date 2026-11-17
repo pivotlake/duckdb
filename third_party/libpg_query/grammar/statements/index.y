@@ -55,6 +55,59 @@ IndexStmt:	CREATE_P opt_unique INDEX opt_concurrently opt_index_name
 					n->onconflict = PG_IGNORE_ON_CONFLICT;
 					$$ = (PGNode *)n;
 				}
+			/*
+			 * CREATE TEXT INDEX is an index of type TEXT: the tokens of a text
+			 * column, each with the rows it appears in. It is spelled without
+			 * USING, never unique, and takes no WHERE.
+			 */
+			| CREATE_P TEXT_P INDEX opt_index_name
+			ON qualified_name '(' index_params ')' opt_reloptions
+				{
+					PGIndexStmt *n = makeNode(PGIndexStmt);
+					n->unique = false;
+					n->concurrent = false;
+					n->idxname = $4;
+					n->relation = $6;
+					n->accessMethod = (char*) "TEXT";
+					n->indexParams = $8;
+					n->options = $10;
+					n->whereClause = NULL;
+					n->excludeOpNames = NIL;
+					n->idxcomment = NULL;
+					n->indexOid = InvalidOid;
+					n->oldNode = InvalidOid;
+					n->primary = false;
+					n->isconstraint = false;
+					n->deferrable = false;
+					n->initdeferred = false;
+					n->transformed = false;
+					n->onconflict = PG_ERROR_ON_CONFLICT;
+					$$ = (PGNode *)n;
+				}
+			| CREATE_P TEXT_P INDEX IF_P NOT EXISTS index_name
+			ON qualified_name '(' index_params ')' opt_reloptions
+				{
+					PGIndexStmt *n = makeNode(PGIndexStmt);
+					n->unique = false;
+					n->concurrent = false;
+					n->idxname = $7;
+					n->relation = $9;
+					n->accessMethod = (char*) "TEXT";
+					n->indexParams = $11;
+					n->options = $13;
+					n->whereClause = NULL;
+					n->excludeOpNames = NIL;
+					n->idxcomment = NULL;
+					n->indexOid = InvalidOid;
+					n->oldNode = InvalidOid;
+					n->primary = false;
+					n->isconstraint = false;
+					n->deferrable = false;
+					n->initdeferred = false;
+					n->transformed = false;
+					n->onconflict = PG_IGNORE_ON_CONFLICT;
+					$$ = (PGNode *)n;
+				}
 		;
 
 
